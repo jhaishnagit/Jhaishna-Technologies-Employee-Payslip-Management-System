@@ -1,0 +1,595 @@
+<!-- views/payslip.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Payslip Form</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 8px;
+            font-size: 8.5px;
+        }
+
+        .container {
+            max-width: 580px;
+            margin: 0 auto;
+            background-color: white;
+            border: 1.5px solid #000;
+            padding: 0;
+            display: block;
+        }
+
+        .header {
+            background-color: #fff;
+            border-bottom: 1.5px solid #000;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #4B0082;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .header p {
+            font-size: 9.5px;
+            color: #000;
+        }
+
+        .header input {
+            border: none;
+            outline: none;
+            text-align: center;
+            font-size: 9.5px;
+            width: 65px;
+        }
+
+        .header-flex {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .logo-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-text {
+            text-align: center;
+        }
+
+        .info-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-bottom: 1.5px solid #000;
+        }
+
+        .info-item {
+            border-right: 0.5px solid #000;
+            border-bottom: 0.5px solid #000;
+            padding: 3px 5px;
+        }
+
+        .info-item:nth-child(4n) {
+            border-right: none;
+        }
+
+        .info-item.label {
+            font-weight: bold;
+            font-size: 8px;
+        }
+
+        .info-item input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 1px;
+            font-size: 9px;
+        }
+
+        #empName {
+            display: block;
+            white-space: normal;
+            word-break: break-word;
+            font-size: 9px;
+        }
+
+        .work-days {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-bottom: 1.5px solid #000;
+        }
+
+        .earnings-deductions {
+            display: flex;
+            border-bottom: 1.5px solid #000;
+            align-items: stretch;
+        }
+
+        .earnings-section,
+        .deductions-section {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .earnings-section {
+            border-right: 0.5px solid #000;
+        }
+
+        .deductions-section {
+            border-right: none;
+        }
+
+        .section-header {
+            background-color: #f9f9f9;
+            border-bottom: 0.5px solid #000;
+            padding: 3px 5px;
+            font-weight: bold;
+            display: grid;
+            grid-template-columns: 1fr 70px;
+            font-size: 8.5px;
+        }
+
+        .line-item {
+            border-bottom: 0.5px solid #000;
+            display: grid;
+            grid-template-columns: 1fr 70px;
+            height: 20px;
+        }
+
+        .line-item .label {
+            padding: 3px 5px;
+            border-right: 0.5px solid #000;
+            font-weight: normal;
+            font-size: 8px;
+            white-space: normal;
+            display: flex;
+            align-items: center;
+        }
+
+        .line-item .amount {
+            padding: 3px 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .line-item input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 1px;
+            text-align: right;
+            font-size: 9px;
+        }
+
+        .line-item input,
+        .total-row input {
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .line-item .label:empty {
+            background: #fff;
+        }
+
+        .total-row {
+            border-bottom: 1px solid #000;
+            display: grid;
+            grid-template-columns: 1fr 70px;
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+
+        .total-row .label {
+            padding: 4px 5px;
+            border-right: 1px solid #000;
+            font-size: 8.5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .total-row .amount {
+            padding: 4px 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .total-row input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 1px;
+            text-align: right;
+            font-size: 9px;
+            background-color: transparent;
+            font-weight: bold;
+        }
+
+        .net-pay {
+            display: grid;
+            grid-template-columns: auto 70px;
+            border-bottom: 1.5px solid #000;
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+
+        .net-pay .info-item {
+            border-bottom: none;
+            font-size: 8.5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .net-pay .info-item input {
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .net-pay-words {
+            padding: 3px 5px;
+            border-bottom: 1.5px solid #000;
+            font-style: italic;
+        }
+
+        .net-pay-words input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 1px;
+            font-size: 9px;
+            font-style: italic;
+        }
+
+        .net-pay .info-item {
+            border-right: 0.5px solid #000;
+        }
+
+        .net-pay .info-item:last-child {
+            border-right: none;
+        }
+
+        .employer-contribution {
+            text-align: center;
+            font-style: italic;
+            padding: 4px;
+            border-bottom: 0.5px solid #000;
+            background-color: #f9f9f9;
+            font-weight: bold;
+            font-size: 8.5px;
+        }
+
+        .employer-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr;
+        }
+
+        .employer-item {
+            border-bottom: 0.5px solid #000;
+            border-right: 0.5px solid #000;
+            padding: 3px 5px;
+            font-size: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .employer-item:last-child {
+            border-right: none;
+        }
+
+        .employer-item.label {
+            font-weight: bold;
+        }
+
+        .employer-item input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 1px;
+            text-align: right;
+            font-size: 9px;
+        }
+
+        .remarks {
+            border-bottom: 0.5px solid #000;
+            padding: 3px 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .remarks label {
+            font-weight: bold;
+            margin-right: 4px;
+            font-size: 8.5px;
+            white-space: nowrap;
+        }
+
+        .remarks input {
+            border: none;
+            outline: none;
+            flex: 1;
+            padding: 1px;
+            font-size: 9px;
+        }
+
+        .buttons {
+            text-align: center;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-top: 1.5px solid #000;
+        }
+
+        .btn {
+            padding: 6px 16px;
+            margin: 0 6px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-download {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-download:hover { background-color: #0069d9; }
+
+        .btn-print {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-print:hover { background-color: #218838; }
+
+        @media print {
+            .buttons { display: none; }
+
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .header,
+            .header-flex {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 8px !important;
+                padding: 6px !important;
+            }
+
+            .logo-box img {
+                height: 25px !important;
+                width: auto !important;
+            }
+
+            .header-text h1 {
+                font-size: 13px !important;
+                margin: 0 !important;
+            }
+
+            .header-text p {
+                margin-top: 2px !important;
+                font-size: 9.5px !important;
+            }
+
+            .container {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            table, tr, td {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+        .computer-note{
+    text-align:center;
+    font-size:8px;
+    padding:4px;
+    font-style:italic;
+}
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header header-flex">
+            <div class="logo-box">
+                <img src="data:image/png;base64,<%= logoBase64 %>" style="height:25px; width:auto;">
+            </div>
+            <div class="header-text">
+                <h1>JHAISHNA TECHNOLOGIES PVT LIMITED</h1>
+                <p>
+                    Payslip for the month of
+                    <input type="text" id="month" value="<%= typeof month !== 'undefined' ? month : '' %>" readonly>
+                </p>
+            </div>
+        </div>
+
+        <!-- Employee Information -->
+        <div class="info-section">
+            <div class="info-item label">EMPLOYEE ID :</div>
+            <div class="info-item">
+                <input type="text" id="empId" value="<%= empId %>" readonly>
+            </div>
+            <div class="info-item label">NAME :</div>
+            <div class="info-item">
+                <span id="empName"><%= empName %></span>
+            </div>
+            <div class="info-item label">GENDER :</div>
+            <div class="info-item">
+                <input type="text" id="gender" value="<%= gender %>" readonly>
+            </div>
+            <div class="info-item label">EPF UAN :</div>
+            <div class="info-item">
+                <input type="text" id="epfUan" value="<%= epfUan %>" readonly>
+            </div>
+            <div class="info-item label">PAN NO :</div>
+            <div class="info-item">
+                <input type="text" id="panNo" value="<%= panNo %>" readonly>
+            </div>
+            <div class="info-item label">ESIC NO :</div>
+            <div class="info-item">
+                <input type="text" id="esicNo" value="<%= esicNo %>" readonly>
+            </div>
+        </div>
+
+        <!-- Work Days -->
+        <div class="work-days">
+            <div class="info-item label">NUMBER OF DAYS WORKED :</div>
+            <div class="info-item">
+                <input type="text" value="<%= workDays %>" readonly>
+            </div>
+            <div class="info-item label">EMPLOYEE WORKING DAYS :</div>
+            <div class="info-item">
+                <input type="text" value="<%= totalWorkDays %>" readonly>
+            </div>
+        </div>
+
+        <!-- Earnings and Deductions -->
+        <div class="earnings-deductions">
+            <!-- Earnings Section -->
+            <div class="earnings-section">
+                <div class="section-header">
+                    <span>EARNINGS</span>
+                    <span>AMOUNT</span>
+                </div>
+                <div class="line-item">
+                    <div class="label">BASIC</div>
+                    <div class="amount"><input type="number" id="basic" value="<%= basic %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">HRA</div>
+                    <div class="amount"><input type="number" id="hra" value="<%= hra %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">PERFORMANCE BONUS</div>
+                    <div class="amount"><input type="number" value="<%= performanceBonus %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">OTHER ALLOWANCE</div>
+                    <div class="amount"><input type="number" id="otherAllowance" value="<%= otherAllowance %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item"><div class="label"></div><div class="amount"></div></div>
+                <div class="line-item"><div class="label"></div><div class="amount"></div></div>
+                <div class="line-item"><div class="label"></div><div class="amount"></div></div>
+                <div class="total-row">
+                    <div class="label">TOTAL</div>
+                    <div class="amount"><input type="number" id="totalEarnings" value="<%= totalEarnings %>" step="0.01" readonly></div>
+                </div>
+            </div>
+
+            <!-- Deductions Section -->
+            <div class="deductions-section">
+                <div class="section-header">
+                    <span>DEDUCTIONS</span>
+                    <span>AMOUNT</span>
+                </div>
+                <div class="line-item">
+                    <div class="label">EMPLOYEE EPF CONTRIBUTION :</div>
+                    <div class="amount"><input type="number" id="empEpf" value="<%= empEpf %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">EMPLOYEE ESIC CONTRIBUTION :</div>
+                    <div class="amount"><input type="number" id="empEsic" value="<%= empEsic %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">PROF TAX :</div>
+                    <div class="amount"><input type="number" id="profTax" value="<%= profTax %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">HEALTH INSURANCE DEDUCTION</div>
+                    <div class="amount"><input type="number" id="healthInsurance" value="<%= healthInsurance %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">TDS</div>
+                    <div class="amount"><input type="number" id="tds" value="<%= tds %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">ADVANCE SALARY</div>
+                    <div class="amount"><input type="number" id="advanceSalary" value="<%= advanceSalary %>" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">LAPTOP SECURITY DEPOSIT(Refundable):</div>
+                    <div class="amount"><input type="number" value="<%= performanceBonusDeducted || performanceBonus || '0.00' %>" step="0.01" readonly></div>
+                </div>
+                <div class="total-row">
+                    <div class="label">TOTAL DEDUCTIONS</div>
+                    <div class="amount"><input type="number" id="totalDeductions" value="<%= totalDeductions %>" step="0.01" readonly></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Net Pay -->
+        <div class="net-pay">
+            <div class="info-item label">NET PAY OF THE MONTH :</div>
+            <div class="info-item">
+                <input type="text" id="netPay" value="<%= netPay %>" readonly>
+            </div>
+        </div>
+
+        <!-- Net Pay in Words -->
+        <div class="net-pay-words">
+            <input type="text" id="netPayWords" value="<%= netPayWords %>" readonly>
+        </div>
+
+        <!-- Employer Contribution -->
+        <div class="employer-contribution">EMPLOYER CONTRIBUTION'S</div>
+
+        <div class="employer-section">
+            <div class="employer-item">EMPLOYER EPF CONTRIBUTION :</div>
+            <div class="employer-item"><input type="number" id="employerEpf" value="<%= employerEpf %>" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+        <div class="employer-section">
+            <div class="employer-item">EMPLOYER ESIC CONTRIBUTION :</div>
+            <div class="employer-item"><input type="number" id="employerEsic" value="<%= employerEsic %>" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+        <div class="employer-section">
+            <div class="employer-item label">SUB TOTAL</div>
+            <div class="employer-item"><input type="number" id="subTotal" value="<%= subTotal %>" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+        <div class="employer-section">
+            <div class="employer-item label">MONTHLY CTC</div>
+            <div class="employer-item"><input type="number" value="<%= monthlyCTC %>" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+
+        <!-- Remarks -->
+        <div class="remarks">
+            <label>REMARKS:</label>
+            <input type="text" id="remarks" value="<%= remarks %>" readonly>
+        </div>
+
+        <!-- Computer Generated Note -->
+<div class="computer-note">
+    This is a computer generated statement which does not require any signature.
+</div>
+
+    </div>
+</body>
+
+</html>

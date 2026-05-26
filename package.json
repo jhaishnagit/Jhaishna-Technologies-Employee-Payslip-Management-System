@@ -1,0 +1,32 @@
+{
+  "name": "employee-payslip-generator",
+  "version": "1.0.0",
+  "description": "Employee Payslip Management System with Excel upload, PDF generation, and email distribution",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "payslip",
+    "employee",
+    "excel",
+    "pdf",
+    "email"
+  ],
+  "author": "Jhaishna Technologies",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^5.3.2",
+    "dotenv": "^17.3.1",
+    "ejs": "^3.1.10",
+    "express": "^4.22.1",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.10.1",
+    "puppeteer": "^21.11.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

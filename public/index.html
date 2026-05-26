@@ -1,0 +1,1697 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Payslip Generator</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1680b5 0%, #174983 50%, #5dbeef 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* ===== LOADING OVERLAY WITH PROGRESS ===== */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .circular-progress {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            position: relative;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-circle {
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 0.3s;
+            stroke: #667eea;
+            stroke-width: 8;
+            fill: none;
+            stroke-linecap: round;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .loading-message {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .loading-submessage {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border: 6px solid rgba(255, 255, 255, 0.2);
+            border-top: 6px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== UPLOAD PAGE ===== */
+        .upload-page {
+            min-height: 80vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .upload-container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .upload-container.horizontal {
+            display: flex;
+            gap: 40px;
+            max-width: 1000px;
+            align-items: center;
+        }
+
+        .upload-left {
+            flex: 1;
+            text-align: left;
+        }
+
+        .upload-right {
+            flex: 1;
+        }
+
+        .upload-logo {
+            height: 80px;
+            margin-bottom: 20px;
+            margin-left: 200px;
+            animation: slideDown 0.6s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .upload-heading {
+            font-size: 20px;
+            font-weight: 700;
+            color: #4B0082;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .upload-subheading {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .upload-dropzone {
+            width: 100%;
+            height: 280px;
+            border: 3px dashed #d0d0d0;
+            border-radius: 15px;
+            background: linear-gradient(145deg, #f8f9fa, #ffffff);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-right .upload-dropzone {
+            height: 260px;
+        }
+
+        .upload-dropzone::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .upload-dropzone:hover {
+            border-color: #667eea;
+            background: linear-gradient(145deg, #ffffff, #f0f4ff);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-dropzone:hover::before {
+            opacity: 1;
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .upload-dropzone:hover .upload-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .upload-text {
+            color: #555;
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .upload-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        /* ===== EMPLOYEE LIST PAGE ===== */
+        .employee-page {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .page-header h1 {
+            color: #4B0082;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        #month-section {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        #month-section label {
+            font-size: 18px;
+            font-weight: 600;
+            color: #555;
+            margin-right: 15px;
+        }
+
+        #month-input {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+
+        #month-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #bulk-actions {
+            text-align: center;
+            margin-bottom: 30px;
+            display: none;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        #bulk-actions .btn {
+            padding: 14px 35px;
+            font-size: 16px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #bulk-actions .btn-download-all {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        #bulk-actions .btn-download-all:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        #bulk-actions .btn-send-all {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        #bulk-actions .btn-send-all:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(17, 153, 142, 0.4);
+        }
+
+        #employee-list {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .employee-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .employee-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .employee-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .employee-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .employee-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .employee-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .employee-id {
+            font-size: 14px;
+            color: #999;
+        }
+
+        /* ===== PAYSLIP CONTAINER ===== */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            border: 2px solid #000;
+            padding: 0;
+            display: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-bottom: 3px solid #4B0082;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header-flex {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .logo-box img {
+            height: 50px;
+            width: auto;
+        }
+
+        .header-text h1 {
+            color: #4B0082;
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header-text p {
+            font-size: 16px;
+            color: #555;
+        }
+
+        .header input {
+            border: none;
+            outline: none;
+            text-align: center;
+            font-size: 16px;
+            width: 100px;
+            font-weight: 600;
+            color: #4B0082;
+        }
+
+        .info-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-bottom: 2px solid #000;
+        }
+
+        .info-item {
+            border-right: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            padding: 12px 15px;
+            transition: background 0.2s ease;
+        }
+
+        .info-item:hover {
+            background: #f8f9fa;
+        }
+
+        .info-item:nth-child(4n) {
+            border-right: none;
+        }
+
+        .info-item.label {
+            font-weight: 700;
+            color: #333;
+            background: #f8f9fa;
+        }
+
+        .info-item input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 2px;
+            font-size: 14px;
+            background: transparent;
+        }
+
+        #empName {
+            display: block;
+            white-space: normal;
+            word-break: break-word;
+            font-size: 14px;
+        }
+
+        .work-days {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-bottom: 2px solid #000;
+            background: #fffbf0;
+        }
+
+        .earnings-deductions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        /* .earnings-section,
+        .deductions-section {
+            border-right: 1px solid #000;
+        } */
+        .earnings-section,
+        .deductions-section {
+            display: block;
+        }
+
+        .earnings-section {
+            border-right: 1px solid #000;
+        }
+
+        .deductions-section {
+            border-right: none;
+        }
+
+        .earnings-section,
+        .deductions-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .total-row {
+            margin-top: auto;
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, #4B0082 0%, #663399 100%);
+            color: white;
+            border-bottom: 2px solid #000;
+            padding: 12px 15px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+        }
+
+        .line-item {
+            border-bottom: 1px solid #e0e0e0;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            min-height: 40px;
+            transition: background 0.2s ease;
+        }
+
+        .line-item:hover {
+            background: #f8f9fa;
+        }
+
+        .line-item .label {
+            padding: 10px 15px;
+            border-right: 1px solid #e0e0e0;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .line-item .amount {
+            padding: 10px 15px;
+        }
+
+        .line-item input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 2px;
+            text-align: right;
+            font-size: 14px;
+            background: transparent;
+            font-weight: 600;
+        }
+
+        .total-row {
+            border-bottom: 2px solid #000;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            background: linear-gradient(135deg, #fff9e6 0%, #fffbf0 100%);
+            font-weight: 700;
+        }
+
+        /* .earnings-section .total-row {
+            margin-top: auto;
+        } */
+
+        .total-row .label {
+            padding: 12px 15px;
+            border-right: 1px solid #000;
+            color: #4B0082;
+            font-size: 15px;
+        }
+
+        .total-row .amount {
+            padding: 12px 15px;
+        }
+
+        .total-row input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 2px;
+            text-align: right;
+            font-size: 15px;
+            background-color: transparent;
+            font-weight: 700;
+            color: #4B0082;
+        }
+
+        .net-pay {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            /* Only 2 columns */
+            border-bottom: 2px solid #000;
+            background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+            font-weight: 700;
+        }
+
+        .net-pay .info-item {
+            border-bottom: none;
+            padding: 15px;
+        }
+
+        .net-pay .info-item.label {
+            color: #0066cc;
+            font-size: 16px;
+        }
+
+        .net-pay input {
+            color: #0066cc;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .net-pay-words {
+            padding: 12px 15px;
+            border-bottom: 2px solid #000;
+            font-style: italic;
+            background: #f0f9ff;
+            color: #0066cc;
+        }
+
+        .net-pay-words input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 2px;
+            font-size: 14px;
+            font-style: italic;
+            background: transparent;
+            color: #0066cc;
+            font-weight: 600;
+        }
+
+        .employer-contribution {
+            text-align: center;
+            font-style: italic;
+            padding: 12px;
+            border-bottom: 2px solid #000;
+            background: linear-gradient(135deg, #f0f0f0 0%, #fafafa 100%);
+            font-weight: 700;
+            color: #4B0082;
+            font-size: 15px;
+        }
+
+        .employer-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr;
+        }
+
+        .employer-item {
+            border-bottom: 1px solid #e0e0e0;
+            border-right: 1px solid #e0e0e0;
+            padding: 10px 15px;
+            transition: background 0.2s ease;
+        }
+
+        .employer-item:hover {
+            background: #f8f9fa;
+        }
+
+        .employer-item:last-child {
+            border-right: none;
+        }
+
+        .employer-item.label {
+            font-weight: 600;
+            color: #555;
+            background: #fafafa;
+        }
+
+        .employer-item input {
+            width: 100%;
+            border: none;
+            outline: none;
+            padding: 2px;
+            text-align: right;
+            font-size: 14px;
+            background: transparent;
+            font-weight: 600;
+        }
+
+        .remarks {
+            border-bottom: 2px solid #000;
+            padding: 12px 15px;
+            background: #fffbf0;
+        }
+
+        .remarks label {
+            font-weight: 700;
+            margin-right: 10px;
+            color: #4B0082;
+        }
+
+        .remarks input {
+            border: none;
+            outline: none;
+            width: calc(100% - 100px);
+            padding: 2px;
+            font-size: 14px;
+            background: transparent;
+        }
+
+        .footer {
+            padding: 15px;
+            text-align: center;
+            font-size: 13px;
+            font-style: italic;
+            color: #666;
+            background: #f8f9fa;
+        }
+
+        /* ===== INDIVIDUAL ACTIONS ===== */
+        .individual-actions {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .individual-actions .btn {
+            padding: 14px 40px;
+            font-size: 16px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .individual-actions .btn-download {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .individual-actions .btn-download:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .individual-actions .btn-send {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .individual-actions .btn-send:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(17, 153, 142, 0.4);
+        }
+
+        .individual-actions .btn-back {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+
+        .individual-actions .btn-back:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .upload-container {
+                padding: 30px 20px;
+            }
+
+            .upload-container.horizontal {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .upload-left {
+                text-align: center;
+            }
+
+            .upload-logo {
+                margin-left: 0;
+                height: 60px;
+            }
+
+            .upload-heading {
+                font-size: 18px;
+            }
+
+            .upload-subheading {
+                font-size: 14px;
+                margin-bottom: 20px;
+            }
+
+            .upload-dropzone {
+                height: 220px !important;
+            }
+
+            .upload-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 28px;
+            }
+
+            .upload-text {
+                font-size: 16px;
+            }
+
+            .page-header {
+                padding: 20px 15px;
+            }
+
+            .page-header h1 {
+                font-size: 24px;
+            }
+
+            #month-section label {
+                font-size: 16px;
+            }
+
+            #month-input {
+                padding: 10px 15px;
+                font-size: 14px;
+                min-width: 150px;
+            }
+
+            #bulk-actions .btn {
+                padding: 12px 25px;
+                font-size: 14px;
+            }
+
+            #employee-list {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+                padding: 10px;
+            }
+
+            .employee-card {
+                padding: 20px 15px;
+            }
+
+            .employee-avatar {
+                width: 50px;
+                height: 50px;
+                font-size: 22px;
+            }
+
+            .employee-name {
+                font-size: 16px;
+            }
+
+            .employee-id {
+                font-size: 12px;
+            }
+
+            .container {
+                border-radius: 5px;
+            }
+
+            .header-flex {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .logo-box img {
+                height: 35px;
+            }
+
+            .header-text h1 {
+                font-size: 18px;
+            }
+
+            .header-text p {
+                font-size: 14px;
+            }
+
+            .header input {
+                font-size: 14px;
+                width: 150px;
+            }
+
+            .info-section {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .info-item {
+                padding: 10px 8px;
+                font-size: 12px;
+            }
+
+            .info-item input {
+                font-size: 12px;
+            }
+
+            .work-days {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .earnings-deductions {
+                grid-template-columns: 1fr;
+            }
+
+            .deductions-section {
+                border-right: 1px solid #000;
+                border-top: 2px solid #000;
+            }
+
+            .section-header {
+                font-size: 13px;
+                padding: 10px 8px;
+            }
+
+            .line-item .label,
+            .line-item .amount {
+                padding: 8px;
+                font-size: 12px;
+            }
+
+            .line-item input {
+                font-size: 12px;
+            }
+
+            .total-row .label,
+            .total-row .amount {
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+
+            .total-row input {
+                font-size: 13px;
+            }
+
+            .net-pay {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .net-pay .info-item {
+                padding: 10px 8px;
+            }
+
+            .net-pay .info-item.label {
+                font-size: 14px;
+            }
+
+            .net-pay input {
+                font-size: 14px;
+            }
+
+            .net-pay-words {
+                padding: 10px 8px;
+                font-size: 12px;
+            }
+
+            .net-pay-words input {
+                font-size: 12px;
+            }
+
+            .employer-contribution {
+                font-size: 13px;
+                padding: 10px;
+            }
+
+            .employer-section {
+                grid-template-columns: 2fr 1fr;
+            }
+
+            .employer-section .employer-item:nth-child(3) {
+                display: none;
+            }
+
+            .employer-item {
+                padding: 8px;
+                font-size: 12px;
+            }
+
+            .employer-item input {
+                font-size: 12px;
+            }
+
+            .remarks {
+                padding: 10px 8px;
+                font-size: 12px;
+            }
+
+            .remarks input {
+                width: calc(100% - 70px);
+                font-size: 12px;
+            }
+
+            .individual-actions .btn {
+                padding: 12px 25px;
+                font-size: 14px;
+            }
+
+            .circular-progress {
+                width: 100px;
+                height: 100px;
+            }
+
+            .progress-text {
+                font-size: 20px;
+            }
+
+            .loading-message {
+                font-size: 18px;
+            }
+
+            .loading-submessage {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .upload-heading {
+                font-size: 16px;
+            }
+
+            .page-header h1 {
+                font-size: 20px;
+            }
+
+            #employee-list {
+                grid-template-columns: 1fr;
+            }
+
+            .header-text h1 {
+                font-size: 16px;
+            }
+
+            .info-section,
+            .work-days,
+            .net-pay {
+                grid-template-columns: 1fr;
+            }
+
+            .info-item:nth-child(4n),
+            .info-item:nth-child(2n) {
+                border-right: 1px solid #ddd;
+            }
+
+            .individual-actions .btn {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                background: white;
+            }
+
+            .individual-actions,
+            .page-header,
+            #bulk-actions,
+            #month-section {
+                display: none !important;
+            }
+        }
+
+        .computer-note {
+            text-align: center;
+            font-size: 8px;
+            padding: 4px;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="circular-progress" id="progress-circle" style="display: none;">
+                <svg class="progress-ring" width="120" height="120">
+                    <circle class="progress-ring-circle" stroke-width="8" fill="transparent" r="45" cx="60" cy="60" />
+                </svg>
+                <div class="progress-text" id="progress-text">0%</div>
+            </div>
+            <div class="spinner" id="spinner"></div>
+            <div class="loading-message" id="loading-message">Processing...</div>
+            <div class="loading-submessage" id="loading-submessage">Please wait</div>
+        </div>
+    </div>
+
+    <!-- Upload Page -->
+    <div class="upload-page">
+        <div class="upload-container horizontal">
+            <!-- LEFT SIDE -->
+            <div class="upload-left">
+                <img src="/images/image.png" alt="Company Logo" class="upload-logo">
+                <h1 class="upload-heading">JHAISHNA TECHNOLOGIES PVT LIMITED</h1>
+                <p class="upload-subheading">Employee Payslip Management System</p>
+            </div>
+
+            <!-- RIGHT SIDE -->
+            <div class="upload-right">
+                <div class="upload-dropzone">
+                    <div class="upload-icon">📊</div>
+                    <div class="upload-text">Drop Excel file here or click to upload</div>
+                    <div class="upload-hint">Supports .xlsx format only</div>
+                    <label class="upload-btn">
+                        Choose File
+                        <input type="file" id="excelFile" accept=".xlsx" hidden onchange="uploadExcel()">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee List Page -->
+    <div class="employee-page" style="display: none;">
+        <div class="page-header">
+            <h1>Employee Payslips</h1>
+            <div id="month-section">
+                <label for="month-input">Month:</label>
+                <input type="text" id="month-input" value="January - 2026" readonly>
+            </div>
+        </div>
+
+        <div id="bulk-actions">
+            <button class="btn btn-download-all" onclick="downloadAll()">
+                📥 Download All Payslips
+            </button>
+            <button class="btn btn-send-all" onclick="sendAll()">
+                📧 Send All Emails
+            </button>
+        </div>
+
+        <div id="employee-list"></div>
+    </div>
+
+    <!-- Payslip Container -->
+    <div class="container">
+        <div class="header header-flex">
+            <div class="logo-box">
+                <img src="/images/image.png" alt="Company Logo">
+            </div>
+            <div class="header-text">
+                <h1>JHAISHNA TECHNOLOGIES PVT LIMITED</h1>
+                <p>
+                    Payslip for the month of
+                    <input type="text" id="month" value="" readonly>
+                </p>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-item label">EMPLOYEE ID :</div>
+            <div class="info-item"><input type="text" id="empId" readonly></div>
+            <div class="info-item label">NAME :</div>
+            <div class="info-item">
+                <span id="empName"></span>
+            </div>
+            <div class="info-item label">GENDER :</div>
+            <div class="info-item"><input type="text" id="gender" readonly></div>
+            <div class="info-item label">EPF UAN :</div>
+            <div class="info-item"><input type="text" id="epfUan" readonly></div>
+            <div class="info-item label">PAN NO :</div>
+            <div class="info-item"><input type="text" id="panNo" readonly></div>
+            <div class="info-item label">ESIC NO :</div>
+            <div class="info-item"><input type="text" id="esicNo" readonly></div>
+        </div>
+
+        <div class="work-days">
+            <div class="info-item label">NUMBER OF DAYS WORKED:</div>
+            <div class="info-item"><input type="number" id="workDays" readonly></div>
+            <div class="info-item label">EMPLOYEE WORKING DAYS:</div>
+            <div class="info-item"><input type="number" id="totalWorkDays" readonly></div>
+        </div>
+
+        <div class="earnings-deductions">
+            <div class="earnings-section">
+                <div class="section-header">
+                    <span>EARNINGS</span>
+                    <span>AMOUNT</span>
+                </div>
+                <div class="line-item">
+                    <div class="label">BASIC</div>
+                    <div class="amount"><input type="number" id="basic" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">HRA</div>
+                    <div class="amount"><input type="number" id="hra" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label"> PERFORMANCE BONUS </div>
+                    <div class="amount"><input type="number" id="performanceBonus" step="0.01" readonly>
+
+                    </div>
+                </div>
+                <div class="line-item">
+                    <div class="label">OTHER ALLOWANCE</div>
+                    <div class="amount"><input type="number" id="otherAllowance" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">&nbsp;</div>
+                    <div class="amount"></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">&nbsp;</div>
+                    <div class="amount"></div>
+                </div>
+
+                <div class="total-row">
+                    <div class="label">TOTAL</div>
+                    <div class="amount"><input type="number" id="totalEarnings" step="0.01" readonly></div>
+                </div>
+            </div>
+
+            <div class="deductions-section">
+                <div class="section-header">
+                    <span>DEDUCTIONS</span>
+                    <span>AMOUNT</span>
+                </div>
+                <div class="line-item">
+                    <div class="label">EMPLOYEE EPF CONTRIBUTION :</div>
+                    <div class="amount"><input type="number" id="empEpf" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">EMPLOYEE ESIC CONTRIBUTION :</div>
+                    <div class="amount"><input type="number" id="empEsic" step="0.01" readonly></div>
+                </div>
+
+                <div class="line-item">
+                    <div class="label">PROF TAX :</div>
+                    <div class="amount"><input type="number" id="profTax" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">HEALTH INSURANCE DEDUCTION</div>
+                    <div class="amount"><input type="number" id="healthInsurance" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">TDS</div>
+                    <div class="amount"><input type="number" id="tds" step="0.01" readonly></div>
+                </div>
+                <div class="line-item">
+                    <div class="label">ADVANCE SALARY</div>
+                    <div class="amount">
+                        <input type="number" id="advanceSalary" step="0.01" readonly>
+                    </div>
+                </div>
+                <!-- This is the important new/corrected line -->
+                <div class="line-item">
+                    <div class="label">LAPTOP SECURITY DEPOSIT(Refundable):</div>
+                    <div class="amount">
+                        <input type="number" id="performanceBonusDeducted" step="0.01" readonly>
+                    </div>
+                </div>
+                <div class="total-row">
+                    <div class="label">TOTAL DEDUCTIONS </div>
+                    <div class="amount"><input type="number" id="totalDeductions" step="0.01" readonly></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="net-pay">
+            <div class="info-item label">NET PAY OF THE MONTH :</div>
+            <div class="info-item">
+                <input type="text" id="netPay" readonly>
+            </div>
+        </div>
+
+        <div class="net-pay-words">
+            <input type="text" id="netPayWords" readonly>
+        </div>
+
+        <div class="employer-contribution">EMPLOYER CONTRIBUTION'S</div>
+
+        <div class="employer-section">
+            <div class="employer-item ">EMPLOYER EPF CONTRIBUTION :</div>
+            <div class="employer-item"><input type="number" id="employerEpf" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+        <div class="employer-section">
+            <div class="employer-item ">EMPLOYER ESIC CONTRIBUTION :</div>
+            <div class="employer-item"><input type="number" id="employerEsic" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+        <!-- <div class="employer-section">
+            <div class="employer-item label">Performance Bonus</div>
+            <div class="employer-item"><input type="number" id="employerLaptop" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div> -->
+        <!-- <div class="employer-section">
+            <div class="employer-item"></div>
+            <div class="employer-item"></div>
+            <div class="employer-item"></div>
+        </div> -->
+        <div class="employer-section">
+            <div class="employer-item label">SUB TOTAL</div>
+            <div class="employer-item"><input type="number" id="subTotal" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+        <div class="employer-section">
+            <div class="employer-item label">MONTHLY CTC</div>
+            <div class="employer-item"><input type="number" id="monthlyCTC" step="0.01" readonly></div>
+            <div class="employer-item"></div>
+        </div>
+
+        <div class="remarks">
+            <label>REMARKS :</label>
+            <input type="text" id="remarks" readonly>
+        </div>
+        <!-- Computer Generated Note -->
+        <div class="computer-note">
+            This is a computer generated statement which does not require any signature.
+        </div>
+    </div>
+
+    <div class="individual-actions">
+        <button class="btn btn-download" onclick="downloadSingle()">📥 Download Payslip</button>
+        <button class="btn btn-send" onclick="sendSingle()">📧 Send Mail</button>
+        <button class="btn btn-back" onclick="goBack()">← Back to List</button>
+    </div>
+
+    <script>
+        let currentEmpIndex = -1;
+        let employees = [];
+
+        function showLoading(message, submessage = 'Please wait', showProgress = false) {
+            const overlay = document.getElementById('loading-overlay');
+            const messageEl = document.getElementById('loading-message');
+            const submessageEl = document.getElementById('loading-submessage');
+            const spinner = document.getElementById('spinner');
+            const progressCircle = document.getElementById('progress-circle');
+
+            messageEl.textContent = message;
+            submessageEl.textContent = submessage;
+
+            if (showProgress) {
+                spinner.style.display = 'none';
+                progressCircle.style.display = 'block';
+                updateProgress(0);
+            } else {
+                spinner.style.display = 'block';
+                progressCircle.style.display = 'none';
+            }
+
+            overlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+
+        function updateProgress(percent) {
+            const circle = document.querySelector('.progress-ring-circle');
+            const text = document.getElementById('progress-text');
+            const circumference = 2 * Math.PI * 45;
+            const offset = circumference - (percent / 100) * circumference;
+
+            circle.style.strokeDashoffset = offset;
+            text.textContent = Math.round(percent) + '%';
+        }
+
+        async function uploadExcel() {
+            const fileInput = document.getElementById('excelFile');
+
+            if (!fileInput.files.length) {
+                alert('❌ Please select an Excel file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('excel', fileInput.files[0]);
+
+            try {
+                showLoading('Uploading Excel file...', 'Processing your data');
+
+                const res = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+                hideLoading();
+
+                if (data.success) {
+                    alert(`✅ Excel uploaded successfully!\nEmployees loaded: ${data.count}`);
+
+                    loadEmployeeList();
+
+                    document.querySelector('.upload-page').style.display = 'none';
+                    document.querySelector('.employee-page').style.display = 'block';
+                } else {
+                    alert('❌ Upload failed');
+                }
+
+            } catch (err) {
+                hideLoading();
+                alert('❌ Error uploading Excel');
+                console.error(err);
+            }
+        }
+
+        async function loadEmployeeList() {
+            const res = await fetch('/employees');
+            const data = await res.json();
+
+            employees = data.employees;
+
+            const monthInput = document.getElementById('month-input');
+            monthInput.value = data.month;
+            monthInput.readOnly = true;
+            monthInput.style.pointerEvents = 'none';
+
+            const listDiv = document.getElementById('employee-list');
+            listDiv.innerHTML = '';
+            listDiv.style.display = 'grid';
+
+            employees.forEach((emp, index) => {
+                const initial = emp.empName.charAt(0).toUpperCase();
+                const card = document.createElement('div');
+                card.className = 'employee-card';
+                card.innerHTML = `
+                    <div class="employee-avatar">${initial}</div>
+                    <div class="employee-name">${emp.empName}</div>
+                    <div class="employee-id">ID: ${emp.empId}</div>
+                `;
+                card.onclick = () => showPayslip(index);
+                listDiv.appendChild(card);
+            });
+
+            document.getElementById('month-section').style.display = 'block';
+            document.getElementById('bulk-actions').style.display = 'flex';
+        }
+
+        function showPayslip(index) {
+            currentEmpIndex = index;
+            const emp = employees[index];
+
+            Object.keys(emp).forEach(key => {
+                const el = document.querySelector(`#${key}`);
+                if (!el) return;
+
+                if (el.tagName === "INPUT") {
+                    el.value = emp[key];
+                } else {
+                    el.textContent = emp[key];
+                }
+            });
+
+            document.getElementById('month').value = document.getElementById('month-input').value;
+
+            document.querySelector('.employee-page').style.display = 'none';
+            document.querySelector('.container').style.display = 'block';
+            document.querySelector('.individual-actions').style.display = 'flex';
+        }
+
+        function goBack() {
+            document.querySelector('.container').style.display = 'none';
+            document.querySelector('.individual-actions').style.display = 'none';
+            document.querySelector('.employee-page').style.display = 'block';
+        }
+
+        async function downloadSingle() {
+            showLoading('Generating PDF...', 'Creating your payslip');
+            const month = document.getElementById('month').value || 'January - 2026';
+            try {
+                const res = await fetch('/download-single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month, empIndex: currentEmpIndex })
+                });
+                if (!res.ok) throw new Error('Failed to download');
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${employees[currentEmpIndex].empName}_payslip.pdf`;
+                a.click();
+                hideLoading();
+                alert('✅ Payslip downloaded successfully!');
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error downloading payslip: ' + error.message);
+            }
+        }
+
+        async function sendSingle() {
+            showLoading('Sending email...', 'Please wait while we send your payslip');
+            const month = document.getElementById('month').value || 'January - 2026';
+            try {
+                const res = await fetch('/send-single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month, empIndex: currentEmpIndex })
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    alert('✅ Mail sent successfully!');
+                } else {
+                    alert('❌ Error sending mail: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error sending mail: ' + error.message);
+            }
+        }
+
+        async function downloadAll() {
+            const month = document.getElementById('month-input').value || 'January - 2026';
+            const totalEmployees = employees.length;
+
+            try {
+                showLoading('Preparing download...', `Processing ${totalEmployees} payslips`, true);
+
+                // Simulate progress (since we can't get real progress from server)
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 5;
+                    if (progress >= 90) {
+                        clearInterval(progressInterval);
+                    }
+                    updateProgress(progress);
+                }, 200);
+
+                const res = await fetch('/download-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month })
+                });
+
+                clearInterval(progressInterval);
+                updateProgress(100);
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'all_payslips.zip';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                setTimeout(() => {
+                    hideLoading();
+                    alert('✅ All payslips downloaded successfully');
+                }, 500);
+
+            } catch (err) {
+                hideLoading();
+                alert('❌ Download failed');
+            }
+        }
+
+        async function sendAll() {
+            const month = document.getElementById('month-input').value || 'January - 2026';
+            const totalEmployees = employees.length;
+
+            try {
+                showLoading('Sending emails...', `Processing ${totalEmployees} emails`, true);
+
+                // Simulate progress
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 3;
+                    if (progress >= 90) {
+                        clearInterval(progressInterval);
+                    }
+                    updateProgress(progress);
+                }, 500);
+
+                const res = await fetch('/send-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month })
+                });
+
+                if (!res.ok) {
+    const errorText = await res.text();
+    console.error(errorText);
+    throw new Error(errorText || "Server error");
+}
+
+                const data = await res.json();
+
+                clearInterval(progressInterval);
+                updateProgress(100);
+
+                setTimeout(() => {
+                    hideLoading();
+
+                    if (data.success) {
+                        let message = `✅ Email process completed\n\nSent: ${data.sent}`;
+
+                        if (data.skipped && data.skipped.length > 0) {
+                            message += `\nSkipped (no email): ${data.skipped.length}`;
+                        }
+
+                        if (data.failed && data.failed.length > 0) {
+                            message += `\nFailed: ${data.failed.length}`;
+                        }
+
+                        if (data.hr) {
+                            message += `\n\nHR Status: ${data.hr}`;
+                        }
+
+                        alert(message);
+                    } else {
+                        alert('❌ Email sending failed');
+                    }
+                }, 500);
+
+            } catch (err) {
+                hideLoading();
+               alert('❌ Error sending emails: ' + err.message);
+            }
+        }
+    </script>
+</body>
+
+</html>
