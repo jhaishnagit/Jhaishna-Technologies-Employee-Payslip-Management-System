@@ -1,3 +1,6 @@
+const axios = require("axios");
+const FormData = require("form-data");
+
 console.log("RUNNING FROM:", __dirname);
 
 require('dotenv').config();
@@ -489,6 +492,39 @@ app.post('/send-all', async (req, res) => {
               }
             ]
           });
+
+          // ================= Upload PDF to Flask =================
+
+try {
+
+    const form = new FormData();
+
+    const monthYear = (month || excelMonth).split(" ");
+
+    form.append("email", emp.email.trim());
+    form.append("month", monthYear[0]);
+    form.append("year", monthYear[1]);
+
+    form.append("pdf", pdf, {
+        filename: `${emp.empName}.pdf`,
+        contentType: "application/pdf"
+    });
+
+    await axios.post(
+        "http://127.0.0.1:5000/payslip/upload",
+        form,
+        {
+            headers: form.getHeaders()
+        }
+    );
+
+    console.log(`✅ Uploaded payslip for ${emp.empName}`);
+
+} catch (err) {
+
+    console.log("Upload Error:", err.response?.data || err.message);
+
+}
 
           sent++;
         } else {
