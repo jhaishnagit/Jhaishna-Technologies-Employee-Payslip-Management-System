@@ -345,7 +345,6 @@ app.post("/download-single", async (req, res) => {
       { ...emp, month: req.body.month || excelMonth, logoBase64 },
     );
     const browser = await puppeteer.launch({
-      executablePath: "/usr/bin/chromium-browser",
       headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
